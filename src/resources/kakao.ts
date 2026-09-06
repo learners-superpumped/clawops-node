@@ -230,7 +230,8 @@ export class KakaoBrandImages extends APIResource {
    *
    * ```ts
    * const image = await client.kakao.brandImages.upload({
-   *   file: new File([bytes], 'banner.png', { type: 'image/png' }),
+   *   file: readFileSync('banner.png'),
+   *   filename: 'banner.png',
    *   bubbleType: 'WIDE',
    * });
    * await client.messages.create({
@@ -245,17 +246,22 @@ export class KakaoBrandImages extends APIResource {
    *
    * ⚠️ `TEXT` 는 이미지 자리가 없어 `400` 이다. 자동완성에 뜨지만 쓸 수 없다.
    *
-   * ⚠️ 상한(10MB)을 넘으면 `413` 이고 **`code` 가 없다** — 그 앞단은 검증기가 끊는다.
+   * ⚠️ **상한은 5MB 다.** 넘으면 `400`, 10MB 를 넘으면 업로드 검증기가 먼저 끊어 `413` 이고
+   *    **`code` 가 없다** — 즉 "너무 크다" 가 두 모양으로 온다.
    *
+   * @param params.filename 원본 파일 이름. 목록에서 사람이 알아볼 유일한 단서다.
    * @param params.slot 와이드리스트형에서 작은 항목에 쓸 이미지면 `'sub'`. 기본은 `'main'`.
    */
   async upload(
-    params: { file: Blob; bubbleType: BrandBubbleType; slot?: string },
+    params: { file: Blob | Uint8Array; filename: string; bubbleType: BrandBubbleType; slot?: string },
     options: RequestOptions = {},
   ): Promise<{ id: string }> {
     const form = new FormData();
-    // 파일 이름은 목록에서 사람이 알아볼 유일한 단서다 — `File` 이면 그 이름이 실린다.
-    form.append('image', params.file);
+    // ⚠️ 파일 이름을 **인자로 받는다.** `File` 을 요구하면 Node 18 에서 아예 못 만든다
+    //    (전역 `File` 은 Node 20 부터다). `Blob` 은 이름을 못 들고, 이름이 없으면 목록에서
+    //    무엇인지 알아볼 단서가 사라진다.
+    const blob = params.file instanceof Blob ? params.file : new Blob([params.file]);
+    form.append('image', blob, params.filename);
     form.append('bubbleType', params.bubbleType);
     if (params.slot) form.append('slot', params.slot);
 

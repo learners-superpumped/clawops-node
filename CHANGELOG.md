@@ -14,8 +14,9 @@
   ```
   ⚠️ `free` 안쪽은 **SDK 가 검사하지 않습니다**(불투명 오브젝트). 말풍선 규격표를 서버에 한
   벌만 두는 것이 의도입니다 — SDK 가 사본을 들면 카카오가 칸을 늘린 날 SDK 가 조용히 깎습니다.
-- **`client.kakao.brandImages`** — 자유형에 실을 이미지 업로드·목록. 받은 `id` 를
-  `free.imageId` 에 넣습니다. 한 번 올려 여러 발송에 재사용합니다.
+- **`client.kakao.brandImages`** — 자유형에 실을 이미지 업로드(`file` + `filename`;
+  `Buffer`·`Uint8Array`·`Blob`)·목록. 받은 `id` 를 `free.imageId` 에 넣습니다. 한 번 올려
+  여러 발송에 재사용합니다.
 - 에러 코드 `kakao_brand_body_empty`·`kakao_brand_image_not_found` 를 타입에 등록했습니다.
 
 ### Changed

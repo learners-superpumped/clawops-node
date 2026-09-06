@@ -296,7 +296,8 @@ describe('브랜드 메시지 이미지', () => {
     const client = createClient(fetchFn);
 
     const result = await client.kakao.brandImages.upload({
-      file: new File([new Uint8Array([1, 2, 3])], 'banner.png', { type: 'image/png' }),
+      file: new Uint8Array([1, 2, 3]),
+      filename: 'banner.png',
       bubbleType: 'WIDE',
     });
 
@@ -320,7 +321,8 @@ describe('브랜드 메시지 이미지', () => {
     const client = createClient(fetchFn);
 
     await client.kakao.brandImages.upload({
-      file: new File([new Uint8Array([1])], 'sub.png', { type: 'image/png' }),
+      file: new Uint8Array([1]),
+      filename: 'sub.png',
       bubbleType: 'WIDE_ITEM_LIST',
       slot: 'sub',
     });

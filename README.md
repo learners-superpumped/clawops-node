@@ -518,7 +518,8 @@ const msg = await client.messages.create({
 
 ```typescript
 const image = await client.kakao.brandImages.upload({
-  file: new File([bytes], 'banner.png', { type: 'image/png' }),
+  file: readFileSync('banner.png'),   // Blob 도 됩니다
+  filename: 'banner.png',
   bubbleType: 'WIDE',
 });
 
