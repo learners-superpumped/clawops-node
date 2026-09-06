@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.40.0 (2026-09-06)
+
+### Added
+- **브랜드 메시지 자유형.** `templateId` 대신 `free` 에 말풍선을 직접 싣습니다 — 템플릿을
+  등록하지 않아도 되고, 종료된 친구톡을 대신하는 방식입니다.
+  ```typescript
+  await client.messages.create({
+    to: '01012345678',
+    from: '07052358010',
+    brand: { channelId, free: { chatBubbleType: 'TEXT', content: '신메뉴가 나왔어요.' } },
+  });
+  ```
+  ⚠️ `free` 안쪽은 **SDK 가 검사하지 않습니다**(불투명 오브젝트). 말풍선 규격표를 서버에 한
+  벌만 두는 것이 의도입니다 — SDK 가 사본을 들면 카카오가 칸을 늘린 날 SDK 가 조용히 깎습니다.
+- **`client.kakao.brandImages`** — 자유형에 실을 이미지 업로드·목록. 받은 `id` 를
+  `free.imageId` 에 넣습니다. 한 번 올려 여러 발송에 재사용합니다.
+- 에러 코드 `kakao_brand_body_empty`·`kakao_brand_image_not_found` 를 타입에 등록했습니다.
+
+### Changed
+- ⚠️ **`BrandSendParams` 가 유니온이 되었습니다** — `BrandTemplateSendParams |
+  BrandFreeSendParams`. `templateId` 와 `free` 는 **정확히 하나만** 성립하고, 둘 다 주거나
+  둘 다 빼면 **컴파일 에러**입니다.
+
+  평평한 optional(`templateId?`·`free?`)로 두지 않은 이유는, 그러면 `{ channelId }` 만 준
+  오타가 컴파일을 통과해 **운영 트래픽의 런타임 400** 이 되기 때문입니다.
+
+  `interface BrandSendParams` 를 `extends` 하던 코드는 유니온이라 더 이상 되지 않습니다 —
+  갈래 중 하나(`BrandTemplateSendParams`)를 직접 쓰십시오. minor 로 올린 이유가 이것입니다.
+
 ## 0.39.0 (2026-09-05)
 
 ### Added

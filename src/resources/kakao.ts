@@ -1,7 +1,10 @@
+import { z } from 'zod';
+
 import { APIResource } from '../resource.js';
 import { stripNotGiven } from '../util.js';
 import { Page, PageSchema } from '../pagination.js';
 import {
+  KakaoBrandImageSchema,
   KakaoBrandTemplateSchema,
   KakaoChannelSchema,
   KakaoChannelCategoryListSchema,
@@ -9,6 +12,8 @@ import {
   KakaoTokenRequestSchema,
 } from '../types/kakao.js';
 import type {
+  BrandBubbleType,
+  KakaoBrandImage,
   KakaoBrandTemplate,
   KakaoChannel,
   KakaoChannelCategoryList,
@@ -207,6 +212,79 @@ export class KakaoBrandTemplates extends APIResource {
 }
 
 /**
+ * 자유형 말풍선에 실을 이미지.
+ *
+ * ⭐ **업로드 한 번, 발송 여러 번.** 캠페인 하나에 수천 건이 같은 그림을 쓰므로 받은 `id` 를
+ * 재사용한다 — 발송마다 다시 올릴 필요가 없다.
+ *
+ * ⚠️ **규격이 말풍선 유형마다 다르다.** 업로드할 때 준 `bubbleType` 과 다른 유형에 쓰면
+ * 카카오가 발송 단계에서 거절한다 — 그 유형으로 다시 올려야 한다.
+ */
+export class KakaoBrandImages extends APIResource {
+  private get _path(): string {
+    return `${this._basePath}/kakao/brand-images`;
+  }
+
+  /**
+   * 이미지를 올리고 발송에 쓸 `id` 를 받는다.
+   *
+   * ```ts
+   * const image = await client.kakao.brandImages.upload({
+   *   file: new File([bytes], 'banner.png', { type: 'image/png' }),
+   *   bubbleType: 'WIDE',
+   * });
+   * await client.messages.create({
+   *   to: '01012345678',
+   *   from: '07012345678',
+   *   brand: {
+   *     channelId,
+   *     free: { chatBubbleType: 'WIDE', content: '신메뉴가 나왔어요.', imageId: image.id },
+   *   },
+   * });
+   * ```
+   *
+   * ⚠️ `TEXT` 는 이미지 자리가 없어 `400` 이다. 자동완성에 뜨지만 쓸 수 없다.
+   *
+   * ⚠️ 상한(10MB)을 넘으면 `413` 이고 **`code` 가 없다** — 그 앞단은 검증기가 끊는다.
+   *
+   * @param params.slot 와이드리스트형에서 작은 항목에 쓸 이미지면 `'sub'`. 기본은 `'main'`.
+   */
+  async upload(
+    params: { file: Blob; bubbleType: BrandBubbleType; slot?: string },
+    options: RequestOptions = {},
+  ): Promise<{ id: string }> {
+    const form = new FormData();
+    // 파일 이름은 목록에서 사람이 알아볼 유일한 단서다 — `File` 이면 그 이름이 실린다.
+    form.append('image', params.file);
+    form.append('bubbleType', params.bubbleType);
+    if (params.slot) form.append('slot', params.slot);
+
+    return this._client._post(this._path, {
+      body: form,
+      castTo: z.object({ id: z.string() }).passthrough(),
+      ...options,
+    });
+  }
+
+  /** 올려 둔 이미지 목록. **`id` 를 잃었을 때 되찾는 경로다.** */
+  async list(
+    params: { page?: number; pageSize?: number } = {},
+    options: RequestOptions = {},
+  ): Promise<Page<KakaoBrandImage>> {
+    const query = stripNotGiven({ page: params.page, pageSize: params.pageSize });
+    const path = this._path;
+    const raw = await this._client._get(path, {
+      castTo: PageSchema(KakaoBrandImageSchema),
+      query: Object.keys(query).length ? query : undefined,
+      ...options,
+    });
+    const page = new Page<KakaoBrandImage>(raw.data, raw.meta);
+    page._setClient(this._client, path, KakaoBrandImageSchema, query);
+    return page;
+  }
+}
+
+/**
  * 카카오 알림톡·브랜드 메시지 관련 리소스.
  *
  * 발송 자체는 `client.messages.create({ kakao: … })` 또는 `({ brand: … })` 다 —
@@ -224,6 +302,11 @@ export class Kakao extends APIResource {
   /** 브랜드 메시지 템플릿. 알림톡 템플릿(`templates`)과 **다른 표**다. */
   get brandTemplates(): KakaoBrandTemplates {
     return new KakaoBrandTemplates(this._client, this._accountId);
+  }
+
+  /** 자유형 말풍선에 실을 이미지. 템플릿형은 이미지가 템플릿에 들어 있어 필요 없다. */
+  get brandImages(): KakaoBrandImages {
+    return new KakaoBrandImages(this._client, this._accountId);
   }
 
   /**

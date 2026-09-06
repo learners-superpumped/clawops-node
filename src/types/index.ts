@@ -22,6 +22,8 @@ export type {
   KakaoSendParams,
   BrandMessageCreateParams,
   BrandSendParams,
+  BrandTemplateSendParams,
+  BrandFreeSendParams,
   KakaoFallbackParams,
 } from './message-params.js';
 
@@ -76,6 +78,7 @@ export type {
   KakaoChannel,
   KakaoChannelStatus,
   KakaoTemplate,
+  KakaoBrandImage,
   KakaoBrandTemplate,
   BrandBubbleType,
   KakaoChannelCategory,

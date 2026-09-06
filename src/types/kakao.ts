@@ -131,6 +131,27 @@ export const KakaoBrandTemplateSchema = z
 
 export type KakaoBrandTemplate = z.infer<typeof KakaoBrandTemplateSchema>;
 
+/**
+ * 자유형 말풍선에 실을 이미지.
+ *
+ * ⭐ `id` 는 **ClawOps 리소스 ID** 다 — 벤더 파일 식별자가 아니다. 발송의
+ * `brand.free.imageId` 에 이 값을 넣으면 서버가 벤더 값으로 바꿔 보낸다.
+ */
+export const KakaoBrandImageSchema = z
+  .object({
+    id: z.string(),
+    /** 업로드할 때 지정한 말풍선 유형. 규격이 유형마다 달라 다른 유형엔 재사용할 수 없다. */
+    bubbleType: z.string() as z.ZodType<BrandBubbleType>,
+    /** `'main'` | `'sub'`. 서브는 와이드리스트형에만 있다(메인 2:1, 서브 1:1). */
+    slot: z.string(),
+    /** 업로드한 원본 파일 이름. */
+    name: z.string().nullable(),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+export type KakaoBrandImage = z.infer<typeof KakaoBrandImageSchema>;
+
 /** 채널 업종 카테고리. **열린 집합이므로 코드에 하드코딩하지 말 것** — 이 응답이 정본이다. */
 export const KakaoChannelCategorySchema = z
   .object({

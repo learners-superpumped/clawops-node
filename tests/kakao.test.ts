@@ -289,3 +289,66 @@ describe('kakao.brandTemplates', () => {
     expect(result.data[0].chatBubbleType).toBe('아직-없는-유형');
   });
 });
+
+describe('브랜드 메시지 이미지', () => {
+  it('multipart 로 보낸다 — Content-Type 을 우리가 정하지 않는다', async () => {
+    const fetchFn = mockResponse({ id: 'cmtn8o4vb000a' }, 201);
+    const client = createClient(fetchFn);
+
+    const result = await client.kakao.brandImages.upload({
+      file: new File([new Uint8Array([1, 2, 3])], 'banner.png', { type: 'image/png' }),
+      bubbleType: 'WIDE',
+    });
+
+    expect(result.id).toBe('cmtn8o4vb000a');
+
+    const init = fetchFn.mock.calls[0]![1]!;
+    expect(init.body).toBeInstanceOf(FormData);
+    const form = init.body as FormData;
+    expect(form.get('bubbleType')).toBe('WIDE');
+    // slot 을 안 주면 키 자체가 없다 — 서버 기본값(main)에 맡긴다.
+    expect(form.get('slot')).toBeNull();
+    expect((form.get('image') as File).name).toBe('banner.png');
+
+    // ⛔ boundary 는 fetch 가 붙인다. 우리가 application/json 을 남겨 두면 서버가 본문을
+    //    파싱하지 못하고, 그 실패는 "왜 파일이 안 왔지" 로만 드러난다.
+    expect((init.headers as Record<string, string>)['Content-Type']).toBeUndefined();
+  });
+
+  it('slot 을 주면 그대로 싣는다 — 와이드리스트의 서브는 규격이 다르다', async () => {
+    const fetchFn = mockResponse({ id: 'cmtn8o54u000b' }, 201);
+    const client = createClient(fetchFn);
+
+    await client.kakao.brandImages.upload({
+      file: new File([new Uint8Array([1])], 'sub.png', { type: 'image/png' }),
+      bubbleType: 'WIDE_ITEM_LIST',
+      slot: 'sub',
+    });
+
+    const form = fetchFn.mock.calls[0]![1]!.body as FormData;
+    expect(form.get('slot')).toBe('sub');
+  });
+
+  it('목록을 파싱한다', async () => {
+    const fetchFn = mockResponse(
+      {
+        data: [
+          {
+            id: 'cmtn8o4vb000a',
+            bubbleType: 'WIDE',
+            slot: 'main',
+            name: 'banner.png',
+            createdAt: '2026-09-06T09:07:07.150Z',
+          },
+        ],
+        meta: { page: 0, pageSize: 20, total: 1 },
+      },
+      200,
+    );
+    const client = createClient(fetchFn);
+
+    const page = await client.kakao.brandImages.list();
+    expect(page.data[0]!.id).toBe('cmtn8o4vb000a');
+    expect(page.data[0]!.bubbleType).toBe('WIDE');
+  });
+});
