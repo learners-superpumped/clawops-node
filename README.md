@@ -479,6 +479,66 @@ console.log(msg.type); // 'bms'
 ⚠️ 단가가 알림톡보다 훨씬 높고 **말풍선 유형에 따라 갈립니다** — 템플릿의 `chatBubbleType`
 이 그 축입니다. `content` 는 유형에 따라 `null` 일 수 있습니다(본문이 담기는 자리가 다릅니다).
 
+#### 자유형 — 템플릿 없이 보내기
+
+`templateId` 대신 `free` 에 말풍선을 실으면 **템플릿을 등록하지 않고** 보냅니다. 종료된
+친구톡을 대신하는 방식입니다.
+
+```typescript
+const msg = await client.messages.create({
+  to: '01012345678',
+  from: '07052358010',
+  brand: {
+    channelId: channels.data[0].id,
+    free: {
+      chatBubbleType: 'TEXT',
+      content: '이번 주 신메뉴가 나왔어요.',
+      buttons: [{ name: '메뉴 보기', linkType: 'WL', linkMobile: 'https://example.com' }],
+    },
+  },
+});
+```
+
+`templateId` 와 `free` 는 **정확히 하나만** 실을 수 있습니다 — 둘 다 주거나 둘 다 빼면
+컴파일 에러이고, 타입을 쓰지 않는 호출자에게는 `400 invalid_input` 입니다.
+
+⛔ **자유형에는 변수를 쓸 수 없습니다.** 치환해 줄 템플릿이 없어 `#{이름}` 이 그대로 톡에
+렌더되므로 서버가 막습니다. 값을 채우려면 템플릿을 등록해 `templateId` 로 보내십시오.
+
+⚠️ `free` 안쪽은 **SDK 가 검사하지 않습니다.** 말풍선 규격표는 서버에 한 벌만 두는 것이
+의도입니다 — SDK 가 사본을 들면 카카오가 칸을 늘린 날 SDK 가 조용히 깎습니다. 잘못된 몸통은
+`400` 으로 돌아오고 무엇이 잘못됐는지 본문이 알려 줍니다.
+
+⚠️ 검수를 거치지 않으므로 **여기 실은 버튼 링크가 그대로 톡에 렌더됩니다.**
+
+#### 자유형에 이미지 넣기
+
+이미지가 필요한 말풍선 유형은 먼저 올리고 받은 `id` 를 `imageId` 에 넣습니다. **한 번 올린
+이미지는 여러 발송에 재사용합니다.**
+
+```typescript
+const image = await client.kakao.brandImages.upload({
+  file: readFileSync('banner.png'),   // Blob 도 됩니다
+  filename: 'banner.png',
+  bubbleType: 'WIDE',
+});
+
+await client.messages.create({
+  to: '01012345678',
+  from: '07052358010',
+  brand: {
+    channelId: channels.data[0].id,
+    free: { chatBubbleType: 'WIDE', content: '신메뉴가 나왔어요.', imageId: image.id },
+  },
+});
+```
+
+⚠️ **규격이 말풍선 유형마다 다릅니다.** 올릴 때 준 `bubbleType` 과 다른 유형에 쓰면 카카오가
+발송 단계에서 거절합니다 — 그 유형으로 다시 올리십시오. 와이드리스트형의 작은 항목만
+`slot: 'sub'` 를 씁니다(큰 항목은 2:1, 작은 항목은 1:1).
+
+`id` 를 잃었으면 `client.kakao.brandImages.list()` 로 되찾습니다.
+
 ### 솔라피(SOLAPI) 호환 — 문자만 ClawOps 로
 
 이미 솔라피 SDK 로 작성된 코드를 **그대로 두고** 문자(SMS/LMS/MMS)만 ClawOps 로 보냅니다.

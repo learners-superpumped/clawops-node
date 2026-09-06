@@ -41,6 +41,24 @@ export interface APIClientOptions {
   defaultHeaders?: Record<string, string>;
 }
 
+/**
+ * 본문 직렬화와 그에 딸린 `Content-Type` 을 **함께** 정한다.
+ *
+ * ⚠️ `contentType: null` 은 "헤더를 붙이지 말라" 는 뜻이다. multipart 의 boundary 는 fetch 가
+ *    붙이므로, 기본값(`application/json`)이 남으면 서버가 본문을 파싱하지 못하고 그 실패는
+ *    "왜 파일이 안 왔지" 로만 드러난다.
+ *
+ * ⚠️ 직렬화가 재시도 루프 **밖**이라 재시도마다 다시 stringify 하지 않는다.
+ */
+function serializeBody(body?: Record<string, unknown> | FormData | null): {
+  payload: FormData | string | undefined;
+  contentType: string | null;
+} {
+  if (body instanceof FormData) return { payload: body, contentType: null };
+  if (!body) return { payload: undefined, contentType: 'application/json' };
+  return { payload: JSON.stringify(body), contentType: 'application/json' };
+}
+
 export class APIClient {
   protected _apiKey: string;
   protected _baseURL: string;
@@ -74,7 +92,8 @@ export class APIClient {
     method: string,
     path: string,
     options: {
-      body?: Record<string, unknown> | null;
+      /** `FormData` 면 그대로 보낸다(multipart) — 직렬화도 Content-Type 도 건드리지 않는다. */
+      body?: Record<string, unknown> | FormData | null;
       query?: Record<string, unknown> | null;
       extraHeaders?: Record<string, string>;
       extraQuery?: Record<string, unknown>;
@@ -82,6 +101,12 @@ export class APIClient {
     } = {},
   ): Promise<Response> {
     const headers = this._buildHeaders(options.extraHeaders);
+
+    // 본문과 Content-Type 은 **한 결정**이다 — 따로 두면 새 본문 종류를 더할 때 한쪽만
+    // 고치게 되고, 헤더 쪽을 빠뜨리면 조용히 깨진다.
+    const { payload, contentType } = serializeBody(options.body);
+    if (contentType === null) delete headers['Content-Type'];
+    else headers['Content-Type'] = contentType;
 
     const params = new URLSearchParams();
     const queryObj = { ...options.query, ...options.extraQuery };
@@ -104,7 +129,7 @@ export class APIClient {
         response = await this._fetch(url, {
           method,
           headers,
-          body: options.body ? JSON.stringify(options.body) : undefined,
+          body: payload,
           signal: controller.signal,
         });
       } catch (err) {
@@ -149,7 +174,8 @@ export class APIClient {
     method: string,
     path: string,
     options: {
-      body?: Record<string, unknown> | null;
+      /** `FormData` 면 그대로 보낸다(multipart) — 직렬화도 Content-Type 도 건드리지 않는다. */
+      body?: Record<string, unknown> | FormData | null;
       query?: Record<string, unknown> | null;
       castTo?: z.ZodType<T>;
       extraHeaders?: Record<string, string>;
@@ -204,7 +230,8 @@ export class APIClient {
   async _post<T>(
     path: string,
     options: {
-      body?: Record<string, unknown> | null;
+      /** `FormData` 면 그대로 보낸다(multipart) — 직렬화도 Content-Type 도 건드리지 않는다. */
+      body?: Record<string, unknown> | FormData | null;
       castTo: z.ZodType<T>;
       extraHeaders?: Record<string, string>;
       extraQuery?: Record<string, unknown>;

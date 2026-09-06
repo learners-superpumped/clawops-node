@@ -11,14 +11,27 @@ import type {
 } from '../types/message-params.js';
 
 /**
- * 알림톡·브랜드의 템플릿 지정을 서버 표기(PascalCase)로 옮긴다.
+ * 알림톡·브랜드의 발송 지정을 서버 표기(PascalCase)로 옮긴다.
  *
- * 두 채널의 입력 모양이 같아서 한 곳에 둔다 — 서버가 `Variables` 키 이름을 바꾸면 여기만
- * 고치면 된다. 사본으로 두면 한쪽을 빠뜨려도 값이 `Record<string, unknown>` 이라 컴파일이
- * 통과한다.
+ * 두 채널이 **한 함수를 쓴다** — 알림톡엔 자유형이 없어 `Free` 가 언제나 `undefined` 이고,
+ * `stripNotGiven` 이 그걸 떨군다. 갈라 두면 서버가 `Variables` 키 이름을 바꿀 때 두 곳을
+ * 고쳐야 하고, 한쪽을 빠뜨려도 값이 `Record<string, unknown>` 이라 컴파일이 통과한다.
+ *
+ * ⛔ **네 칸을 그대로 옮긴다 — 여기서 템플릿형/자유형을 고르지 않는다.** `free` 가 있으면
+ *    `TemplateId` 를 떨구는 식으로 짜면, 둘 다 실은 (타입을 안 쓰는) 호출자가 `400` 대신
+ *    **자기가 안 시킨 자유형이 나간 것**을 받는다. 배타 판정은 서버 한 곳이다.
+ *
+ * ⚠️ `Free` 는 불투명 오브젝트다. `stripNotGiven` 은 한 겹만 훑으므로 안쪽은 손대지 않는다 —
+ *    판정은 서버의 말풍선 표가 한다.
  */
-const templateBlock = (p?: KakaoSendParams | BrandSendParams) =>
-  p && stripNotGiven({ ChannelId: p.channelId, TemplateId: p.templateId, Variables: p.variables });
+const sendBlock = (p?: KakaoSendParams | BrandSendParams) =>
+  p &&
+  stripNotGiven({
+    ChannelId: p.channelId,
+    TemplateId: p.templateId,
+    Variables: p.variables,
+    Free: p.free,
+  });
 
 export class Messages extends APIResource {
   /**
@@ -65,8 +78,8 @@ export class Messages extends APIResource {
       MediaUrl: params.mediaUrl,
       IdempotencyKey: params.idempotencyKey,
       // 중첩 객체는 손으로 조립한다 — stripNotGiven 은 한 겹만 훑는다.
-      Kakao: templateBlock(params.kakao),
-      Brand: templateBlock(params.brand),
+      Kakao: sendBlock(params.kakao),
+      Brand: sendBlock(params.brand),
       Fallback:
         params.fallback &&
         stripNotGiven({

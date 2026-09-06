@@ -48,6 +48,15 @@ export type ClawOpsErrorCode =
   | 'kakao_brand_night_blocked'
   /** 브랜드는 대체발송이 없다 — `fallback` 을 실으면 이 코드다. */
   | 'kakao_fallback_not_allowed'
+  /** 자유형 몸통에서 본문을 뽑지 못했다. 벤더는 최상위 `text` 가 비면 접수 뒤 실패시킨다. */
+  | 'kakao_brand_body_empty'
+  /**
+   * 자유형 `imageId` 가 이 계정의 이미지가 아니다.
+   *
+   * ⚠️ 벤더 fileId 를 직접 실어도 이 코드다 — 공개 API 는 `kakao.brandImages.upload()` 가
+   *    준 우리 id 만 받는다(그게 남의 이미지를 막는 유일한 관문이다).
+   */
+  | 'kakao_brand_image_not_found'
   // 카카오 채널 연동
   | 'KAKAO_TOKEN_INVALID'
   | 'KAKAO_CHANNEL_ALREADY_LINKED'

@@ -367,4 +367,54 @@ describe('카카오 브랜드 메시지 (bms)', () => {
     const body = JSON.parse(String(fetchFn.mock.calls[0]![1]!.body));
     expect(body.Brand).toEqual({ ChannelId: 'clx9kak0001', TemplateId: 'clx9bms0001' });
   });
+
+  it('자유형은 Free 를 통째로 싣는다 — 안쪽을 깎지 않는다', async () => {
+    const fetchFn = mockResponse(sampleBms, 201);
+    const client = createClient(fetchFn);
+
+    // 중첩·배열이 섞인 몸통. SDK 가 칸을 안다고 착각하면 여기서 무엇이든 사라진다.
+    const free = {
+      chatBubbleType: 'CAROUSEL_FEED',
+      carousel: {
+        list: [
+          { header: '카드1', content: '본문1', imageId: 'cmtn8o4vb000a' },
+          { header: '카드2', content: '본문2', imageId: 'cmtn8o54u000b' },
+        ],
+      },
+    };
+
+    await client.messages.create({
+      to: '01012345678',
+      from: '07052358010',
+      brand: { channelId: 'clx9kak0001', free },
+    });
+
+    const body = JSON.parse(String(fetchFn.mock.calls[0]![1]!.body));
+    // 정확히 두 키다 — 템플릿형 칸이 붙지 않는 것까지 이 한 줄이 본다.
+    expect(body.Brand).toEqual({ ChannelId: 'clx9kak0001', Free: free });
+  });
+
+  it('⛔ 둘 다 실으면 서버가 고르게 둔다 — SDK 가 한쪽을 떨구지 않는다', async () => {
+    const fetchFn = mockResponse(sampleBms, 201);
+    const client = createClient(fetchFn);
+
+    // 타입으로는 막히지만 JS 호출자는 이렇게 보낼 수 있다. SDK 가 여기서 한쪽을 골라 버리면
+    // 호출자는 400 대신 **자기가 안 시킨 쪽이 나간 것**을 받는다.
+    await client.messages.create({
+      to: '01012345678',
+      from: '07052358010',
+      brand: {
+        channelId: 'clx9kak0001',
+        templateId: 'clx9bms0001',
+        free: { chatBubbleType: 'TEXT', content: '본문' },
+      },
+    } as never);
+
+    const body = JSON.parse(String(fetchFn.mock.calls[0]![1]!.body));
+    expect(body.Brand).toEqual({
+      ChannelId: 'clx9kak0001',
+      TemplateId: 'clx9bms0001',
+      Free: { chatBubbleType: 'TEXT', content: '본문' },
+    });
+  });
 });
